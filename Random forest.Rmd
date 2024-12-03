@@ -1,0 +1,43 @@
+---
+title: "314 Final Project Code"
+author: "- Yuguang Duan, Pingxuan Ren, Yiyi Feng, Nida Li
+date: "2024-12-03"
+output: pdf_document
+---
+
+```{r}
+train = read.csv("train.csv")
+test = read.csv("test.csv")
+```
+
+```{r}
+library(randomForest)
+set.seed(0)
+train$Diagnosis <- as.factor(train$Diagnosis)
+# Fit Random Forest model
+rf_model <- randomForest(Diagnosis ~ ., data=train, mtry=100, importance=TRUE)
+summary(rf_model)
+# Predict on the test set
+yhat_rf <- predict(rf_model, newdata=test)
+
+# Compute feature importance
+importance(rf_model)
+
+# Plot feature importance
+varImpPlot(rf_model)
+```
+
+```{r}
+#output the csv file submitted in Kaggle.com
+output_df <- data.frame(
+  PatientID = test$PatientID,
+  Diagnosis = yhat_rf
+)
+
+write.csv(output_df, "output.csv", row.names = FALSE)
+```
+
+```{r}
+# to be added: GAM for research question 2
+# to be added: comparisons between different models (AIC, BIC, etc.)
+```
