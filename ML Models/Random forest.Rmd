@@ -1,13 +1,17 @@
 ---
-title: "314 Final Project Code"
-author: "- Yuguang Duan, Pingxuan Ren, Yiyi Feng, Nida Li
-date: "2024-12-03"
+title: "314 Final Project code - Random Forest"
+author: "Yuguang Duan, Pingxuan Ren, Yiyi Feng, Nida Li"
+date: "2024-12-07"
 output: pdf_document
 ---
 
 ```{r}
 train = read.csv("train.csv")
 test = read.csv("test.csv")
+
+# Data Cleaning
+train <- subset(train, select = -DoctorInCharge)
+test <- subset(test, select = -DoctorInCharge)
 ```
 
 ```{r}
@@ -15,7 +19,7 @@ library(randomForest)
 set.seed(0)
 train$Diagnosis <- as.factor(train$Diagnosis)
 # Fit Random Forest model
-rf_model <- randomForest(Diagnosis ~ ., data=train, mtry=100, importance=TRUE)
+rf_model <- randomForest(Diagnosis ~ ., data=train, mtry=1, importance=TRUE)
 summary(rf_model)
 # Predict on the test set
 yhat_rf <- predict(rf_model, newdata=test)
@@ -27,6 +31,8 @@ importance(rf_model)
 varImpPlot(rf_model)
 ```
 
+## Model Output
+
 ```{r}
 #output the csv file submitted in Kaggle.com
 output_df <- data.frame(
@@ -37,7 +43,92 @@ output_df <- data.frame(
 write.csv(output_df, "output.csv", row.names = FALSE)
 ```
 
+## Model Evaluation
 ```{r}
-# to be added: GAM for research question 2
-# to be added: comparisons between different models (AIC, BIC, etc.)
+# setup
+# install.packages("MLmetrics")
+# install.packages("Metrics")
+# install.packages("caret")
+library("MLmetrics")
+library("caret")
+library("Metrics")
 ```
+
+```{r}
+# Model Evaluations (on training data only)
+yhat_rf_train <- predict(rf_model, newdata = train)
+
+# Confusion Matrix 
+conf_matrix <- confusionMatrix(yhat_rf_train, train$Diagnosis)
+print(conf_matrix)
+```
+
+```{r}
+# F1 Score
+f1 <- F1_Score(y_true = train$Diagnosis, y_pred = yhat_rf_train, positive = "1")
+cat("F1 Score (Training):", f1, "\n")
+```
+
+```{r}
+# RMSE
+rmse_value <- rmse(as.numeric(train$Diagnosis) - 1, as.numeric(yhat_rf_train) - 1)
+cat("RMSE (Training):", rmse_value, "\n")
+```
+
+```{r}
+# Result and analysis
+# Outputs a csv file to compare rf(1 tree) and rf(two and more trees)
+rf_comparison <- data.frame(
+  "Number of Trees" = c("1", "2+"),
+  "Accuracy" = c(0.8305, 1.0000),
+  "95% CI" = c("(0.8105, 0.8491)", "(0.9976, 1)"),
+  "Kappa" = c(0.584, 1.000),
+  "Sensitivity" = c(1.0000, 1.0000),
+  "Specificity" = c(0.5207, 1.0000),
+  "Pos Pred Value" = c(0.7922, 1.0000),
+  "Neg Pred Value" = c(1.0000, 1.0000),
+  "F1 Score" = c(0.684796, 1.0000),
+  "RMSE" = c(0.4117619, 0.0000)
+)
+write.csv(rf_comparison, "rf_comparison.csv", row.names = FALSE)
+rf_comparison
+```
+
+## Using k-fold Corss-Validation to choose best model
+```{r}
+# Set up
+set.seed(0)
+train_control <- trainControl(
+  method = "cv",      
+  number = 5,         
+  search = "grid"     
+)
+
+
+tune_grid <- expand.grid(
+  mtry = c(2, 5, 10, 13)    # Number of trees
+)
+
+# Train the Random Forest model
+rf_tuned <- train(
+  Diagnosis ~ .,
+  data = train, 
+  method = "rf",
+  metric = "Accuracy",
+  tuneGrid = tune_grid,
+  trControl = train_control,
+  ntree = 100
+)
+
+# Best model
+print(rf_tuned$bestTune)
+
+# Performance data
+print(rf_tuned$results)
+
+# Performance Plot
+plot(rf_tuned)
+```
+
+Conclusion: the Random Forest model with a single tree is a less complex model but also has less accuracy, while the Random Forest model with twoo or more trees not only have perfect F1 score, RMSE value and 100% accuracy in the Confusion Matrix, but also has better accuracy.
+According to k-fold Cross Validation the greater the number of trees the better the accuracy. The model we submitted on Kaggle was the random forest with 13 trees, and the accuracy based on test data is 0.91666. This means that even though the F1 scores and the RMSE value indicates possible overfitting the model actually has decent performance when it comes to test data.
