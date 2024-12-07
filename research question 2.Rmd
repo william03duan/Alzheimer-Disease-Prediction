@@ -1,0 +1,48 @@
+---
+title: "Research Question 2"
+author: "Pingxuan Ren"
+date: "2024-12-07"
+output: pdf_document
+---
+
+```{r}
+# Load the libraries
+library(dplyr)
+library(ggplot2)
+
+# Import train Dataset
+train = read.csv("train.csv")
+
+# Fit a Generalized Linear Model
+model_one <- glm(Diagnosis ~ BMI + Smoking + AlcoholConsumption + PhysicalActivity + DietQuality + SleepQuality, 
+                 data = train, 
+                 family = binomial(link = "logit"))
+
+```
+
+```{r}
+# GLM Model analysis
+summary(model_one)
+
+# Extract variables by significance level (0.05)
+significant_vars <- summary(model_one)$coefficients %>%
+  as.data.frame() %>%
+  filter(`Pr(>|z|)` < 0.05)
+
+# Print significant variables
+print(significant_vars)
+```
+After using GLM with respect to the six factors including BMI, Smoking, AlcoholConsumption, PhysicalActicity, DietQuality, and SleepQuality, the results of the analysis are shown below:
+First of all, the null variance 1954.4 is slightly greater than the residual deviance of 1944.5, indicating that the health factors could explain a small proportion of variability in this training dataset. \
+Secondly, according to our GLM model the only statistically significant predictor is SleepQuality with a P-value of 0.0121. This means that among the six health-related factors, sleep quality is beneficial for the treatment of Alzheimer. \
+The odds ratio is:
+
+\[
+\text{OR} = e^{\beta_{\text{SleepQuality}}} = 0.925
+\]
+
+and this means that for every one-unit increase in the sleep quality among the subjects, the odds of being diagnosed with Alzheimer is multiplied by 0.925, or decrease by:
+
+\[
+\text{\%Change} = 1 - \text{Odds Ratio} = 1 - 0.925 = 7.5\%
+\].
