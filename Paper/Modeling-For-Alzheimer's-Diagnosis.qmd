@@ -1,0 +1,829 @@
+---
+title: "Modeling For Alzheimer's Diagnosis: Predictive Analysis"
+subtitle: "STA314 Group28"
+author: 
+  - Yuguang Duan 1007824348
+  - Pingxuan Ren 1007613708
+  - Yiyi Feng 1007763984
+  - Nida Li 1008507411
+thanks: "Code and data are available at: https://github.com/william03duan/Alzheimer-Disease-Prediction.git"
+date: "December 8, 2024"
+date-format: long
+abstract: "**Our team (Group 28) achieved a prediction score of 0.91666 on Kaggle for this competition, ranking 77th.**"
+format:
+  pdf:
+    toc: true
+    number-sections: true
+bibliography: references.bib
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+####Workspace setup ####
+
+library(dplyr)
+library(tibble)
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(randomForest)
+library(MLmetrics)
+library(caret)
+library(Metrics)
+
+train <- read.csv("../data/train.csv")
+test <- read.csv("../data/test.csv")
+
+```
+
+
+# Introduction
+
+Alzheimer's disease is a complex condition with no known definitive cause or cure. Its impact on individuals and families is profound, affecting cognitive function and quality of life. As the global population ages, Alzheimer’s prevalence is expected to rise, emphasizing the need for early diagnosis and research. Identifying factors contributing to the onset of this disease is crucial for developing effective interventions. This study aims to predict Alzheimer's diagnosis using demographic, medical, and lifestyle factors, and to build a predictive model for early detection.
+
+Our analysis focuses on predicting Alzheimer's diagnosis based on variables such as age, gender, medical history (e.g., hypertension, diabetes), cognitive performance, and lifestyle factors (e.g., smoking, alcohol consumption). We employed a Random Forest model to estimate diagnosis outcomes, incorporating predictors like age, ethnicity, cardiovascular health, memory complaints, and physical activity levels. The goal is to identify which factors most significantly influence the risk of Alzheimer's. 
+
+The remainder of this paper is structured as follows: [@sec-prob] describe the research questions addressed in our study. [@sec-data] provides an overview of the dataset, including data processing and data analysis. [@sec-model] explains the modeling approach, and the algorithms chosen in this study to assess the model. [@sec-results] presents the findings, including conclusions drawn for our research questions. In [@sec-discussion], we discuss the limitations of our analysis, and what we can do next to improve our model. Codes are placed in the appendix.
+
+# Problem statement {#sec-prob}
+
+This study, while constructing a predictive model for Alzheimer’s diagnosis, also investigates two research questions:
+
+ - Among the 32 predictors included in the model, covering patients' demographic details, lifestyle factors, medical history, clinical measurements, cognitive and functional assessments, and symptoms, which predictors are most critical for accurate diagnosis?
+ 
+ - Within lifestyle factors, including BMI, smoking, alcohol consumption, physical activity, diet quality, and sleep quality, which factors have a statistically significant influence on Alzheimer’s diagnosis?
+
+Answering these questions will deepen our understanding of the key contributors to Alzheimer’s diagnosis and provide guidance for patients to adopt healthier lifestyles, potentially reducing the risk of developing the disease.
+
+# Statistical Analysis {#sec-data}
+
+## Data Processing
+
+The data preprocessing step mainly focused on data cleaning and transformations. Firstly, the data cleaning procedures include handling missing values (eventually, there are no missing values for all columns), addressing outliers for numerical variables, and checking data types. The column “DoctorInCharge” was dropped since it was irrelevant to our target and research questions. Moreover, according to the correlation heatmap (which will be shown below), for all independent variables, none of the absolute values of the correlation coefficients except the main diagonal reached 0.7 or more, which indicated that none of the two variables were strongly correlated, so all the variables were used for prediction and modeling. For data transformations, standardization or normalization is used for k-nearest-neighbor, logistic regression, and support vector machine classifiers because they were sensitive to distances, and as the magnitudes of data became larger, they significantly contributed to distance calculation which caused incorrect classifications.
+
+## Data Analyzation
+
+To gain a comprehensive understanding of the dataset before modeling, we created various visualizations to quickly grasp its structure. Five types of charts were produced: 
+
+ - Boxplots and Histograms for quantitative data, illustrating their distributions and highlighting outliers or patterns.
+
+ - Pie Charts and Bar Charts for categorical data, providing insights into the proportions and frequencies of each category.
+
+ - A Correlation Heatmap for all predictors and diagnose data, showing the relationships and dependencies between variables.
+
+Boxplots are available at [here](https://github.com/william03duan/Alzheimer-Disease-Prediction/tree/main/Data%20Visualization%20Charts/Box-plot%20of%20numerical%20columns). The boxplot analysis was conducted for each variable. The analysis of 15 variables revealed no outliers.
+
+Histograms are available at [here](https://github.com/william03duan/Alzheimer-Disease-Prediction/tree/main/Data%20Visualization%20Charts/Histograms-numerical%20columns). The histograms highlight distinct patterns in the dataset. Participant ages show a sharp peak at 90, indicating a larger proportion of older individuals. Triglyceride levels cluster around 300, suggesting elevated levels in a significant number of participants. Sleep quality scores are concentrated near 8, reflecting generally good sleep among participants, with fewer reporting poor sleep. MMSE scores exhibit notable variability, with a dip between 10 and 20, pointing to differences in cognitive abilities within the sample. These trends provide meaningful insights and warrant further exploration.
+
+Piecharts are available at [here](https://github.com/william03duan/Alzheimer-Disease-Prediction/tree/main/Data%20Visualization%20Charts/Pie%20charts-categorical%20variable). From the perspective of patient's demographic details, the gender distribution is nearly balanced, with Caucasians significantly outnumbering other ethnic groups, and the majority of patients having a High School education level. From a health standpoint, most individuals are non-smokers and have no history of Alzheimer's in their family, cardiovascular disease, diabetes, depression, head injuries, or hypertension. Similarly, the majority do not report symptoms such as memory impairment, confusion, disorientation, personality changes, difficulty completing tasks, or forgetfulness.
+
+Barcharts are available at [here](https://github.com/william03duan/Alzheimer-Disease-Prediction/tree/main/Data%20Visualization%20Charts/Countplots). The bar plot reveals the number of Alzheimer's diagnoses across different categories for each factor. For most factors, there are no significant differences in diagnosis rates among categories. For instance, in the gender factor, males and females have similar diagnosis rates. However, notable differences are observed in certain cases. Caucasians have a slightly higher diagnosis rate compared to other ethnic groups. Among health-related factors, patients with hypertension, memory complaints, behavioral problems, and forgetfulness exhibit significantly higher probabilities of an Alzheimer's diagnosis. Interestingly, patients with a family history of Alzheimer's do not show an elevated diagnosis rate, suggesting that the disease may not have a strong genetic predisposition.
+
+The correlation heatmap is available at [here](https://github.com/william03duan/Alzheimer-Disease-Prediction/blob/main/Data%20Visualization%20Charts/Correlation%20heatmap.png). The correlation matrix shows most variables have weak correlations with diagnosis (between -0.2 and 0.2). However, MMSE, Functional Assessment, and ADL show stronger negative correlations (below -0.2), indicating higher scores are linked to a lower likelihood of Alzheimer’s. In contrast, memory complaints and behavioral problems have stronger positive correlations (above 0.2), suggesting that more severe symptoms increase the likelihood of a diagnosis. These findings align with the bar chart analysis, highlighting these variables' predictive value.
+
+# Model {#sec-model}
+
+## Model Justification
+
+In our study, we ultimately decided to use the Random Forest algorithm to predict Alzheimer's disease diagnosis.
+
+During the model training process, we explored many other machine learning algorithms, including k-Nearest Neighbors (kNN), LDA, logistic regression, support vector machine, XGBoost, decision tree, and naive Bayes. However, compared to Random Forest, all models, except for the decision tree and XGBoost models, had significantly lower predictive accuracy. K-NN achieved 0.76, Logistic Regression and LDA reached 0.84, and Support Vector Machine scored 0.82 ('rbf' kernel) and 0.83 ('linear' kernel). Naïve Bayes attained 0.79, while Random Forest got an accuracy of 0.9459. Although the decision tree model achieved an extremely high accuracy of 1.0, it carried a substantial risk of overfitting. Meanwhile, the accuracy of XGBoost was similar to that of the Random Forest model, but when the features in the dataset don't interact much or are weakly correlated, XGBoost may overfit the data and fail to generalize well. In our previous data analysis, the correlation matrix indeed indicated weak associations between the features, so we ultimately chose Random Forest as the predictive model.
+
+We believe that Random Forest performed exceptionally well in our study because of its ability to efficiently handle weakly correlated features and complex variable interactions, which align perfectly with the characteristics of our dataset. By constructing multiple decision trees and aggregating their predictions, Random Forest reduces the risk of overfitting while capturing diverse patterns within the data. Its robustness in managing multicollinearity and irrelevant features enables it to model non-linear relationships and interactions, which is especially critical when the associations between variables are limited. Moreover, Random Forest’s ability to rank feature importance aligns with our research objective of identifying key predictive factors for Alzheimer’s diagnosis. By striking a balance between predictive accuracy and interpretability, Random Forest emerged as the optimal choice for this study.
+
+## Model Evaluation
+
+After deciding to use the random forest model for prediction, we employed 5-fold cross-validation to tune the mtry parameter, aiming to achieve more accurate predictions for Alzheimer’s disease diagnosis. 
+
+We constructed random forest models with mtry values of 2, 5, 10, and 13, systematically evaluating their performance to identify the model with the highest predictive accuracy. We found that the random forest model with a single tree exhibited lower complexity but correspondingly lower accuracy. Conversely, models with two or more trees not only achieved perfect F1 scores and RMSE values but also demonstrated 100% accuracy in the confusion matrix, indicating superior overall performance.
+
+The 5-fold cross-validation ultimately selected the random forest model with mtry = 13 as the best-performing model. Given its exceptional performance in the confusion matrix, F1 score, and RMSE values, as shown in [@tbl-modelresult], we finalized our decision to submit the random forest model with 13 trees to Kaggle.
+
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+#| label: tbl-modelresult
+#| tbl-cap: "Model Evaluation Results"
+
+# Set seed for reproducibility
+set.seed(0)
+
+# Convert Diagnosis column to factor
+train$Diagnosis <- as.factor(train$Diagnosis)
+
+# Fit Random Forest model
+rf_model <- randomForest(Diagnosis ~ ., data = train, mtry = 13, importance = TRUE)
+
+# Predict on the test set
+yhat_rf <- predict(rf_model, newdata = test)
+
+# Model Evaluations (on training data only)
+yhat_rf_train <- predict(rf_model, newdata = train)
+
+# Generate confusion matrix
+conf_matrix <- confusionMatrix(yhat_rf_train, train$Diagnosis)
+
+# Extract key metrics
+accuracy <- conf_matrix$overall['Accuracy']
+sensitivity <- conf_matrix$byClass['Sensitivity']
+specificity <- conf_matrix$byClass['Specificity']
+precision <- conf_matrix$byClass['Precision']
+
+# Calculate F1 Score
+f1_score <- 2 * (precision * sensitivity) / (precision + sensitivity)
+
+# RMSE
+rmse_value <- rmse(as.numeric(train$Diagnosis) - 1, as.numeric(yhat_rf_train) - 1)
+
+# Prepare the metrics table for rendering with kable
+metrics_table <- data.frame(
+  Metric = c("Accuracy", "Sensitivity", "Specificity", "Precision", "F1 Score", "RMSE"),
+  Value = c(
+    sprintf("%.2f", accuracy), 
+    sprintf("%.2f", sensitivity), 
+    sprintf("%.2f", specificity), 
+    sprintf("%.2f", precision), 
+    sprintf("%.2f", f1_score),
+    sprintf("%.2f", rmse_value)  # Add RMSE value to the table with two decimal places
+  )
+)
+
+# Display the table with kable
+kable(metrics_table, col.names = c("Metric", "Value"))
+
+```
+
+# Result and Conclusion {#sec-results}
+
+```{r}
+#| label: tbl-resultone
+#| tbl-cap: "Feature Importance for Alzheimer’s Diagnosis Model"
+#| message: false
+#| echo: false
+#| warning: false
+
+# Get the feature importance from the random forest model
+importance_data <- importance(rf_model)
+
+# Convert the importance data into a data frame
+importance_df <- data.frame(
+  MeanDecreaseAccuracy = round(importance_data[, "MeanDecreaseAccuracy"], 4),  # Round to 4 decimals
+  MeanDecreaseGini = round(importance_data[, "MeanDecreaseGini"], 4)  # Round to 4 decimals
+)
+
+# Create the table using kable
+kable(importance_df, 
+      col.names = c("Mean Decrease Accuracy", "Mean Decrease Gini"))
+
+```
+
+[@tbl-resultone] presents the feature importance scores for two metrics, Mean Decrease Accuracy, and Mean Decrease Gini, derived from a random forest model predicting Alzheimer's diagnosis. These scores provide insight into how each feature contributes to the model's predictive performance, which answers our first research question.
+
+Mean Decrease Accuracy measures how much the accuracy of the model decreases when the feature is excluded from the model. A higher value indicates that the feature is more critical to accurate predictions. MMSE (Mini-Mental State Examination), Functional Assessment, Memory Complaints, and Behavioral Problems all show very high values, suggesting these features significantly impact the model's accuracy.
+
+Mean Decrease Gini assesses how much a feature improves the homogeneity of the nodes and leaves in the random forest. A higher value indicates that the feature plays a larger role in reducing impurity and improving the model’s decisions. Features like MMSE, Functional Assessment, Memory Complaints, and Behavioral Problems also show strong values here, which further suggests that these variables have strong discriminatory power for classifying Alzheimer's diagnoses.
+
+The impact of Functional Assessment, Memory Complaints, and Behavioral Problems on Alzheimer's disease has been confirmed by numerous studies [@amariglio2012] [@jessen2014] [@pinyopornpanish2022]. However, we have not found any research that establishes a link between MMSE and Alzheimer's disease. Perhaps this could serve as a new perspective for future research into the causes of Alzheimer's disease.
+
+```{r}
+#| message: false
+#| echo: false
+#| warning: false
+#| label: tbl-resulttwo
+#| tbl-cap: "Summary of GLM Model Coefficients"
+
+
+# Fit a Generalized Linear Model
+model_one <- glm(Diagnosis ~ BMI + Smoking + AlcoholConsumption + PhysicalActivity + DietQuality + SleepQuality, 
+                 data = train, 
+                 family = binomial(link = "logit"))
+
+# GLM Model analysis summary
+model_summary <- summary(model_one)
+
+# Extract coefficients and convert them to a data frame
+coefficients_df <- as.data.frame(model_summary$coefficients)
+
+# Rename the columns for clarity and round values to 4 decimal places
+coefficients_df <- coefficients_df %>%
+  mutate(Variable = rownames(coefficients_df)) %>%
+  select(Variable, Estimate, `Std. Error`, `z value`, `Pr(>|z|)`) %>%
+  mutate(
+    Estimate = round(Estimate, 4),
+    `Std. Error` = round(`Std. Error`, 4),
+    `z value` = round(`z value`, 4),
+    `Pr(>|z|)` = round(`Pr(>|z|)`, 4)
+  )
+
+# Display the table of coefficients with kable
+kable(
+  coefficients_df,
+  col.names = c("Variable", "Estimate", "Std. Error", "z value", "p-value"))
+  
+```
+
+To address the second research question, we conducted a Generalized Linear Model (GLM) analysis on six lifestyle factors: BMI, smoking, alcohol consumption, physical activity, diet quality, and sleep quality. The results of the analysis are presented in [@tbl-resulttwo].
+
+Firstly, the null deviance of 1954.4 is slightly larger than the residual deviance of 1944.5, indicating that the health factors explain a small portion of the variability in the training dataset. Secondly, according to our GLM model, the only statistically significant predictor is sleep quality, with a p-value of 0.0121. This means that among the six health-related factors, only sleep quality has a statistically significant impact on the diagnosis of Alzheimer's disease. 
+
+The odds ratio is:
+
+\[
+\text{OR} = e^{\beta_{\text{SleepQuality}}} = 0.925
+\]
+
+and this means that for every one-unit increase in the sleep quality among the subjects, the odds of being diagnosed with Alzheimer is multiplied by 0.925, or decrease by:
+
+\[
+\text{\%Change} = 1 - \text{Odds Ratio} = 1 - 0.925 = 7.5\%
+\].
+
+To validate our findings, we reviewed studies available online regarding the relationship between Alzheimer’s disease and sleep quality. We found that the association between sleep quality and both the onset and pathological progression of Alzheimer’s disease has been well-established in numerous studies. Research suggests that the underlying mechanism involves sleep disturbances accelerating the accumulation of beta-amyloid and tau proteins, thereby promoting the development and worsening of Alzheimer’s disease. A bidirectional relationship has been identified between these factors [@neumann2017]. Moreover, sleep fragmentation and insomnia have been confirmed as risk factors for Alzheimer’s disease in many studies [@zhang2022]. Based on our data analysis and supporting evidence from the literature, we conclude that sleep quality is the most critical health factor influencing Alzheimer’s disease diagnosis.
+
+# Discussion {#sec-discussion}
+
+## Limitation
+
+In this study, while we are achieving certain advancements in predicting Alzheimer’s disease diagnoses, there are several limitations. For instance, the dataset exhibits biases, with significant disparities in the proportions of different racial and educational groups. This imbalance reduces the generalizability of the study, making it difficult to apply the findings to a broader population. Moreover, the dataset suffers from a limited sample size and a narrow age range, which undermines the precision of the research. The data predominantly represent specific subpopulations, such as the elderly, which may increase the difficulty of replicating the study in future experiments. The dataset lacks demographic information, such as country of origin, preventing us from drawing any region- or country-specific conclusions.
+
+Although various machine learning algorithms were evaluated, and the Random Forest model was ultimately selected, it is still possible that other models, that we did not test on, might better suit this dataset. Furthermore, as shown in [@tbl-resultone], a small number of variables dominated the feature importance metrics, potentially leading to the underestimation of other predictive factors or misjudging their influence on Alzheimer’s disease diagnosis. These limitations highlight areas for improvement in data collection, model selection, and feature analysis for future research.
+
+## Future Study
+
+Future research could significantly benefit from enhancing the diversity and comprehensiveness of the dataset. While the dataset currently includes valuable demographic information such as age, gender, ethnicity, and education level, expanding the range of variables could provide deeper insights into the various factors influencing Alzheimer's Disease. For example, environmental factors, such as the patient’s working environment, exposure to noise, pollutants, or other occupational hazards, could play a role in the development and progression of the disease. Understanding how these factors interact with genetic and lifestyle factors could reveal new avenues for prevention or treatment.
+
+Furthermore, the inclusion of clinical data such as blood biomarkers or imaging results, like MRI or PET scans, would add an extra layer of depth to the analysis. These objective measures could help pinpoint specific physiological changes related to Alzheimer’s, providing crucial information on the underlying mechanisms of the disease. Adding such data would not only increase the accuracy of predictions but also enhance our understanding of how these biomarkers relate to cognitive decline and other clinical symptoms.
+
+To mitigate the impact of errors arising from an excessive number of variables, dimensionality reduction techniques such as Principal Component Analysis (PCA) should be employed. Retaining only components that explain 95%-99% of the variance would ensure a more concise and robust feature set. Additionally, future studies could investigate the interactions between variables and explore the use of more advanced models or hybrid approaches to further refine predictions and improve model performance, for instance, LightGBM or CatBoost.
+
+
+\newpage
+
+# Appendix a. Code {-}
+
+All code are available at: [https://github.com/william03duan/Alzheimer-Disease-Prediction.git]( https://github.com/william03duan/Alzheimer-Disease-Prediction.git).
+
+## Decision Tree Model (Python)
+
+```{r, eval=FALSE}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import cross_val_score
+from sklearn.tree import DecisionTreeClassifier
+
+df_train = pd.read_csv('train.csv')
+df_train.head()
+
+df_test = pd.read_csv('test.csv')
+df_test.head()
+
+df_train.drop(['DoctorInCharge'], axis = 1, inplace = True)
+
+df_test.drop(['DoctorInCharge'], axis = 1, inplace = True)
+
+x_train = df_train.drop(['PatientID'], axis = 1)
+y_train = df_train['Diagnosis']
+x_test = df_test.drop(['PatientID'], axis = 1)
+
+clf = DecisionTreeClassifier(criterion='gini', 
+                             splitter='best', random_state = 42)
+
+clf.fit(x_train, y_train)
+
+val_scores = cross_val_score(clf, x_train, y_train, cv = 10)
+print(f"Cross-validation scores :{val_scores}")
+print(f"Mean accuracy : {val_scores.mean():.2f}")
+```
+
+## KNN Model (Python)
+
+```{r, eval=FALSE}
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import cross_val_score
+
+df_train = pd.read_csv('train.csv')
+df_train.head()
+
+df_train.drop(['DoctorInCharge'],axis = 1, inplace = True)
+df_train.head()
+
+numerical_column = []
+for col in df_train.drop(['PatientID'], axis = 1).columns:
+    if df_train[col].nunique() > 4:
+        numerical_column.append(col)
+print(f"Numerical columns:", numerical_column)
+
+scaler = StandardScaler()
+
+df_train[numerical_column]=
+  scaler.fit_transform(df_train[numerical_column])
+df_train
+
+x_train = df_train.drop(['PatientID','Diagnosis'], axis = 1)
+y_train = df_train['Diagnosis']
+
+df_test = pd.read_csv('test.csv')
+df_test.head()
+
+df_test.drop(['DoctorInCharge'], axis = 1, inplace = True)
+df_test
+
+df_test[numerical_column]=
+  scaler.fit_transform(df_test[numerical_column])
+df_test.head()
+
+x_test = df_test.drop(['PatientID'], axis = 1)
+
+knn = KNeighborsClassifier()
+
+mean_scores_1 = []
+k_value = range(1,40)
+for k in k_value:
+    knn.n_neighbors = k
+    scores = cross_val_score(knn, x_train, y_train, 
+                             cv = 5, scoring = 'accuracy')
+    mean_scores_1.append(scores.mean())
+optimal_value_k = k_value[np.argmax(mean_scores_1)]
+print(f"optimal k is {optimal_value_k}")
+
+mean_scores_2 = []
+k_value = range(1,40)
+for k in k_value:
+    knn.n_neighbors = k
+    scores = cross_val_score(knn, x_train, y_train, 
+                             cv = 10, scoring = 'accuracy')
+    mean_scores_2.append(scores.mean())
+optimal_value_k = k_value[np.argmax(mean_scores_2)]
+print(f"optimal k is {optimal_value_k}")
+
+mean_scores_3 = []
+k_value = range(1,40)
+for k in k_value:
+    knn.n_neighbors = k
+    scores = cross_val_score(knn, x_train, y_train, 
+                             cv = 15, scoring = 'accuracy')
+    mean_scores_3.append(scores.mean())
+optimal_value_k = k_value[np.argmax(mean_scores_3)]
+print(f"optimal k is {optimal_value_k}")
+
+mean_scores = []
+k_value = range(1,40)
+for k in k_value:
+    knn.n_neighbors = k
+    scores = cross_val_score(knn, x_train, y_train,
+                             cv = 3, scoring = 'accuracy')
+    mean_scores.append(scores.mean())
+optimal_value_k = k_value[np.argmax(mean_scores)]
+print(f"optimal k is {optimal_value_k}")
+
+knn_1 = KNeighborsClassifier(n_neighbors = 29)
+
+knn_1.fit(x_train,y_train)
+
+val_scores_3 = cross_val_score(knn_1, x_train, y_train, cv = 10)
+print(f"Cross-validation scores_3 :{val_scores_3}")
+print(f"Mean accuracy : {val_scores_3.mean():.2f}")
+
+pred = knn_1.predict(x_test)
+
+df_test['Diagnosis'] = pd.Series(pred)
+df_test
+```
+
+## LDA Model (Python)
+
+```{r, eval=FALSE}
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import cross_val_score
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis,
+QuadraticDiscriminantAnalysis
+from sklearn.preprocessing import StandardScaler
+
+df_train = pd.read_csv('train.csv')
+df_train.head()
+
+df_train.drop(['DoctorInCharge'],axis = 1, inplace = True)
+df_train.head()
+
+df_test = pd.read_csv('test.csv')
+df_test.head()
+
+df_test.drop(['DoctorInCharge'], axis = 1, inplace = True)
+
+numerical_column = []
+for col in df_train.drop(['PatientID'], axis = 1).columns:
+    if df_train[col].nunique() > 4:
+        numerical_column.append(col)
+print(f"Numerical columns:", numerical_column)
+
+scaler = StandardScaler()
+df_train[numerical_column]=scaler.fit_transform(df_train[numerical_column])
+df_train
+
+scaler = StandardScaler()
+df_test[numerical_column]=scaler.fit_transform(df_test[numerical_column])
+df_test
+
+x_train = df_train.drop(['PatientID', 'Diagnosis'], axis = 1)
+y_train = df_train['Diagnosis']
+
+x_test = df_test.drop(['PatientID'], axis = 1)
+
+LDA_classification = LinearDiscriminantAnalysis()
+
+LDA_classification.fit(x_train, y_train)
+
+val_scores = cross_val_score(LDA_classification, x_train, y_train, cv = 10)
+print(f"Cross-validation scores_1 :{val_scores}")
+print(f"Mean accuracy : {val_scores.mean():.2f}")
+
+LDA_classification.predict(x_test)
+
+```
+
+## Logistic Regression Model (Python)
+
+```{r, eval=FALSE}
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import cross_val_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import MinMaxScaler
+
+df_train = pd.read_csv('train.csv')
+df_train.head()
+
+df_train.drop(['DoctorInCharge'],axis = 1, inplace = True)
+df_train.head()
+
+numerical_column = []
+for col in df_train.drop(['PatientID'], axis = 1).columns:
+    if df_train[col].nunique() > 4:
+        numerical_column.append(col)
+print(f"Numerical columns:", numerical_column)
+
+# scaler = StandardScaler()
+# df_train[numerical_column]=scaler.fit_transform(df_train[numerical_column])
+# df_train
+min_max_scaler = MinMaxScaler()
+df_train[numerical_column] = 
+  min_max_scaler.fit_transform(df_train[numerical_column])
+df_train
+
+x_train = df_train.drop(['PatientID','Diagnosis'], axis = 1)
+y_train = df_train['Diagnosis']
+
+df_test = pd.read_csv('test.csv')
+df_test
+
+df_test.drop(['DoctorInCharge'], axis = 1, inplace = True)
+df_test
+
+# df_test[numerical_column]=scaler.fit_transform(df_test[numerical_column])
+df_test[numerical_column] =  
+  min_max_scaler.fit_transform(df_test[numerical_column])
+df_test
+
+x_test = df_test.drop(['PatientID'],axis = 1)
+
+model = LogisticRegression(random_state=50, max_iter=1000)
+model.fit(x_train, y_train)
+
+val_scores = cross_val_score(model, x_train, y_train, cv = 10)
+print(f"Cross-validation scores_1 :{val_scores}")
+print(f"Mean accuracy : {val_scores.mean():.2f}")
+
+pred = model.predict(x_test)
+pred
+
+count = np.count_nonzero(pred == 1)
+count
+
+model_1 = LogisticRegression(penalty='l1', solver='saga', max_iter=1000)
+
+model_1.fit(x_train, y_train)
+
+val_scores_1 = cross_val_score(model_1, x_train, y_train, cv = 10)
+print(f"Cross-validation scores_1 :{val_scores}")
+print(f"Mean accuracy : {val_scores.mean():.2f}")
+
+y_pred = model_1.predict(x_test)
+y_pred
+
+count_1 = np.count_nonzero(y_pred == 1)
+count_1
+
+```
+
+## Naive Bayes Model (Python)
+
+```{r, eval=FALSE}
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import cross_val_score
+from sklearn.naive_bayes import GaussianNB
+
+df_train = pd.read_csv('train.csv')
+df_train.head()
+
+df_train.drop(['DoctorInCharge'],axis = 1, inplace = True)
+df_train.head()
+
+x_train = df_train.drop(['PatientID','Diagnosis'], axis = 1)
+y_train = df_train['Diagnosis']
+
+df_test = pd.read_csv('test.csv')
+df_test.head()
+
+df_test.drop(['DoctorInCharge'], axis = 1, inplace = True)
+df_test
+
+x_test = df_test.drop(['PatientID'], axis = 1)
+
+NB_classifier = GaussianNB()
+NB_classifier.fit(x_train, y_train)
+
+val_scores_1 = cross_val_score(NB_classifier, x_train, y_train, cv = 10)
+print(f"Cross-validation scores_1 :{val_scores_1}")
+print(f"Mean accuracy : {val_scores_1.mean():.2f}")
+
+pred = NB_classifier.predict(x_test)
+pred
+
+df_test['Diagnosis'] = pd.Series(pred)
+df_test
+```
+
+## Support Vector Machine (Python)
+
+```{r, eval=FALSE}
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+
+df_train = pd.read_csv('train.csv')
+df_train.head()
+
+df_train.drop(['DoctorInCharge'],axis = 1, inplace = True)
+
+x_train = df_train.drop(['PatientID','Diagnosis'], axis = 1)
+y_train = df_train['Diagnosis']
+
+df_test = pd.read_csv('test.csv')
+df_test.head()
+
+x_test = df_test.drop(['PatientID'], axis = 1)
+
+numerical_column = []
+for col in df_train.drop(['PatientID'], axis = 1).columns:
+    if df_train[col].nunique() > 4:
+        numerical_column.append(col)
+print(f"Numerical columns:", numerical_column)
+
+scaler = StandardScaler()
+x_train[numerical_column]=scaler.fit_transform(df_train[numerical_column])
+
+x_test[numerical_column] = scaler.fit_transform(x_test[numerical_column])
+
+svm_model_1 = SVC(kernel='rbf', C=1.0, gamma='scale', random_state=42)  
+svm_model_1.fit(x_train, y_train)
+
+val_scores = cross_val_score(svm_model_1, x_train, y_train, cv = 10)
+print(f"Cross-validation scores_1 :{val_scores}")
+print(f"Mean accuracy : {val_scores.mean():.2f}")
+
+svm_model_2 = SVC(kernel='linear', C=1.0, gamma='scale', random_state=42)  
+svm_model_2.fit(x_train, y_train)
+
+val_scores = cross_val_score(svm_model_2, x_train, y_train, cv = 10)
+print(f"Cross-validation scores_1 :{val_scores}")
+print(f"Mean accuracy : {val_scores.mean():.2f}")
+```
+
+## XGboost Model (Python)
+
+```{r, eval=FALSE}
+
+! pip install xgboost
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import xgboost as xgb
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
+
+df_train = pd.read_csv('train.csv')
+df_train.head()
+
+df_train.drop(['DoctorInCharge'],axis = 1, inplace = True)
+
+x_train = df_train.drop(['PatientID','Diagnosis'], axis = 1)
+y_train = df_train['Diagnosis']
+
+df_test = pd.read_csv('test.csv')
+df_test.head()
+
+x_test = df_test.drop(['PatientID','DoctorInCharge'], axis = 1)
+
+params = {'objective':'binary:logistic','max_depth': 4,'alpha': 10,
+        'learning_rate': 1.0,'n_estimators':100}
+
+xgb_clf = XGBClassifier(**params)
+
+xgb_clf.fit(x_train, y_train)
+
+val_scores = cross_val_score(xgb_clf, x_train, y_train, cv = 10)
+print(f"Cross-validation scores_1 :{val_scores}")
+print(f"Mean accuracy : {val_scores.mean():.2f}")
+
+pred = xgb_clf.predict(x_test)
+pred
+
+df_test['Diagnosis'] = pd.Series(pred)
+df_test
+
+xgb.plot_importance(xgb_clf,max_num_features=20,
+                    title='Feature Importances (Weight)', height=0.5)
+```
+
+## Random Forest (Rcode)
+
+```{r, eval=FALSE}
+
+train = read.csv("train.csv")
+test = read.csv("test.csv")
+
+# Data Cleaning
+train <- subset(train, select = -DoctorInCharge)
+test <- subset(test, select = -DoctorInCharge)
+
+library(randomForest)
+set.seed(0)
+train$Diagnosis <- as.factor(train$Diagnosis)
+# Fit Random Forest model
+rf_model <- randomForest(Diagnosis ~ ., 
+                         data=train, mtry=1, importance=TRUE)
+summary(rf_model)
+# Predict on the test set
+yhat_rf <- predict(rf_model, newdata=test)
+
+# Compute feature importance
+importance(rf_model)
+
+# Plot feature importance
+varImpPlot(rf_model)
+
+#output the csv file submitted in Kaggle.com
+output_df <- data.frame(
+  PatientID = test$PatientID,
+  Diagnosis = yhat_rf
+)
+
+write.csv(output_df, "output.csv", row.names = FALSE)q
+
+# setup
+# install.packages("MLmetrics")
+# install.packages("Metrics")
+# install.packages("caret")
+library("MLmetrics")
+library("caret")
+library("Metrics")
+
+# Model Evaluations (on training data only)
+yhat_rf_train <- predict(rf_model, newdata = train)
+
+# Confusion Matrix 
+conf_matrix <- confusionMatrix(yhat_rf_train, train$Diagnosis)
+print(conf_matrix)
+
+# F1 Score
+f1 <- F1_Score(y_true = train$Diagnosis, 
+               y_pred = yhat_rf_train, positive = "1")
+cat("F1 Score (Training):", f1, "\n")
+
+# RMSE
+rmse_value <- rmse(as.numeric(train$Diagnosis) - 1, 
+                   as.numeric(yhat_rf_train) - 1)
+cat("RMSE (Training):", rmse_value, "\n")
+
+# Result and analysis
+
+# Outputs a csv file to compare rf(1 tree) and rf(two and more trees)
+rf_comparison <- data.frame(
+  "Number of Trees" = c("1", "2+"),
+  "Accuracy" = c(0.8305, 1.0000),
+  "95% CI" = c("(0.8105, 0.8491)", "(0.9976, 1)"),
+  "Kappa" = c(0.584, 1.000),
+  "Sensitivity" = c(1.0000, 1.0000),
+  "Specificity" = c(0.5207, 1.0000),
+  "Pos Pred Value" = c(0.7922, 1.0000),
+  "Neg Pred Value" = c(1.0000, 1.0000),
+  "F1 Score" = c(0.684796, 1.0000),
+  "RMSE" = c(0.4117619, 0.0000)
+)
+write.csv(rf_comparison, "rf_comparison.csv", row.names = FALSE)
+rf_comparison
+
+# Set up
+set.seed(0)
+train_control <- trainControl(
+  method = "cv",      
+  number = 5,         
+  search = "grid"     
+)
+
+
+tune_grid <- expand.grid(
+  mtry = c(2, 5, 10, 13)    # Number of trees
+)
+
+# Train the Random Forest model
+rf_tuned <- train(
+  Diagnosis ~ .,
+  data = train, 
+  method = "rf",
+  metric = "Accuracy",
+  tuneGrid = tune_grid,
+  trControl = train_control,
+  ntree = 100
+)
+
+# Best model
+print(rf_tuned$bestTune)
+
+# Performance data
+print(rf_tuned$results)
+
+# Performance Plot
+plot(rf_tuned)
+
+```
+
+## Research Question Two Analyzation (Rcode)
+
+```{r, eval=FALSE}
+# Load the libraries
+library(dplyr)
+library(ggplot2)
+
+# Import train Dataset
+train = read.csv("train.csv")
+
+# Fit a Generalized Linear Model
+model_one <- glm(Diagnosis ~ BMI + Smoking + AlcoholConsumption
+                 + PhysicalActivity + DietQuality + SleepQuality, 
+                 data = train, 
+                 family = binomial(link = "logit"))
+
+# GLM Model analysis
+summary(model_one)
+
+# Extract variables by significance level (0.05)
+significant_vars <- summary(model_one)$coefficients %>%
+  as.data.frame() %>%
+  filter(`Pr(>|z|)` < 0.05)
+
+# Print significant variables
+print(significant_vars)
+
+```
+
+
+\newpage
+
+# References
+
