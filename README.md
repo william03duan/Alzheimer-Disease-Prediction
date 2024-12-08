@@ -16,12 +16,12 @@ This study developed a model to predict Alzheimer's disease diagnoses based on p
 
 The repo is structured as:
 
--   `data` contains the training and test data for Alzheimer's disease diagnoses.
--   `data/02-analysis_data` contains the cleaned dataset that was constructed.
--   `model` contains a series of fitted models we used. 
--   `paper` contains the files used to generate the paper, including the Quarto document and reference bibliography file, as well as the PDF of the paper. 
--   `scripts` contain the R scripts used to simulate, download, test, and clean data.
+-   `Data` contains the training and test data for Alzheimer's disease diagnoses.
+-   `Data Visulization Charts` contains the figures generated for data analuzation part.
+-   `ML Models` contains a series of fitted models we used. 
+-   `Paper` contains the files used to generate the paper, including the Quarto document and reference bibliography file, as well as the PDF of the paper. 
+-   `research question 2.Rmd` contain the R scripts used to make GLM model for assessing significant factors for answering research question two.
 
 ## Data Retrieval
 
-We obtained the raw data from Jacob Filipp's Project Hammer website, available at: [https://www.kaggle.com/competitions/classification-of-the-alzheimers-disease/data](https://www.kaggle.com/competitions/classification-of-the-alzheimers-disease/data). To access the data, scroll down the page until you see the section "Data Explorer". You can select the csv file you want to download and hit download button to get them.
+We obtained the raw data from Kaggle, "Classification of the Alzheimer's Disease" competition, available at: [https://www.kaggle.com/competitions/classification-of-the-alzheimers-disease/data](https://www.kaggle.com/competitions/classification-of-the-alzheimers-disease/data). To access the data, scroll down the page until you see the section "Data Explorer". You can select the csv file you want to download and hit download button to get them.
