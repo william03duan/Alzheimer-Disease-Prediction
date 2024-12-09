@@ -822,6 +822,90 @@ print(significant_vars)
 
 ```
 
+## Exploratory Data Analysis (Python)
+
+```{r, eval=FALSE}
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import plotly.express as px
+
+df_train = pd.read_csv('train.csv')
+df_train.head()
+
+df_train.shape
+
+df_train.tail()
+
+df_train.isnull().sum()
+
+df_train.info()
+
+df_train.shape
+
+df_train.drop(['PatientID', 'DoctorInCharge'], axis = 1, inplace = True)
+
+numerical_columns = []
+for col in df_train.columns:
+    if df_train[col].nunique() > 4:
+        numerical_columns.append(col)
+print(f"Numerical columns:", numerical_columns)
+
+print(len(numerical_columns))
+
+df_train[numerical_columns].describe()
+
+for col_1 in numerical_columns:
+    plt.figure(figsize=(10, 5))
+    sns.boxplot(data=df_train, x=col_1)
+    plt.title(f'Boxplot of distribution of {col_1}')
+    plt.show()
+    
+for col_3 in numerical_columns:
+    plt.figure(figsize=(10,10))
+    sns.histplot(df_train[col_3], bins=30, kde=True, edgecolor='black', alpha=0.7) 
+    plt.title(f'Histogram of distribution of {col_3}')
+    plt.xlabel('Value', fontsize = 14)
+    plt.ylabel('Frequency', fontsize = 14)
+    plt.show()
+
+categorical_columns = []
+for col in df_train.columns:
+    if df_train[col].nunique() <= 4:
+        categorical_columns.append(col)
+print(f"Categorical columns:", categorical_columns)
+
+print(len(categorical_columns))
+
+alternative_one = categorical_columns[:17]
+print(alternative_one)    
+    
+for col_2 in alternative_one:
+    value_counts = df_train[col_2].value_counts()
+    plt.figure(figsize = (8,8))
+    value_counts.plot.pie(autopct = '%1.1f%%', startangle=90, colormap= 'Set3')
+    plt.title(f'{col_2} value counts percentage')
+    plt.show()
+    
+value_counts = df_train['Diagnosis'].value_counts()
+value_counts.plot.pie(autopct = '%1.1f%%', startangle=90, colormap= 'Set3')
+plt.title('Diagnosis value counts percentage')
+plt.savefig('Diagnosis value counts distribution.png')
+plt.show()
+
+for col_5 in alternative_one:
+    fig = px.histogram(df_train, x=col_5, color = 'Diagnosis', 
+                       title=f"Bar Chart counts of {col_5}")
+    fig.show()
+
+plt.figure(figsize = (28,28))
+sns.heatmap(df_train.corr(),cmap="coolwarm", annot = True)
+plt.title('Correlation heatmap between each variables', size = 25)
+plt.show()
+
+```
 
 \newpage
 
