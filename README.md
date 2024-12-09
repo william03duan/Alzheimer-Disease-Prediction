@@ -17,7 +17,7 @@ This study developed a model to predict Alzheimer's disease diagnoses based on p
 The repo is structured as:
 
 -   `Raw Data` contains the training and test data for Alzheimer's disease diagnoses.
--   `Data Visulization Charts` contains the figures generated for data analuzation part.
+-   `Data Visulization Charts` contains the figures generated for data analysis (mainly visulization) part.
 -   `ML Models` contains a series of fitted models we used. 
 -   `Paper` contains the files used to generate the paper, including the Quarto document and reference bibliography file, as well as the PDF of the paper. 
 -   `research question 2.Rmd` contain the R scripts used to make GLM model for assessing significant factors for answering research question two.
